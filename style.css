@@ -1,0 +1,94 @@
+body {
+  background-color: #121212;
+  color: #f0f0f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 2em;
+  margin-bottom: 20px;
+  color: #00ffcc;
+}
+
+#tabs {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  background-color: #1f1f1f;
+  border: none;
+  color: #ffffff;
+  padding: 10px 15px;
+  font-size: 1em;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.tab-button.active,
+.tab-button:hover {
+  background-color: #00ffcc;
+  color: #000;
+}
+
+.table {
+  width: 100%;
+  max-width: 400px;
+  height: 200px;
+  margin: 0 auto 20px;
+  background: radial-gradient(ellipse at center, #2e2e2e 0%, #121212 100%);
+  border-radius: 50%/30%;
+  position: relative;
+}
+
+#situationText,
+#handText,
+#resultText {
+  font-size: 1.2em;
+  margin: 10px 0;
+}
+
+#actionButtons {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+#actionButtons button {
+  background-color: #1f1f1f;
+  border: 1px solid #00ffcc;
+  color: #00ffcc;
+  padding: 10px 20px;
+  font-size: 1em;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#actionButtons button:hover {
+  background-color: #00ffcc;
+  color: #000;
+}
+
+#nextButton {
+  margin-top: 20px;
+  background-color: #444;
+  color: #fff;
+  border: none;
+  padding: 10px 25px;
+  font-size: 1em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#nextButton:hover {
+  background-color: #00ffcc;
+  color: #000;
+}
