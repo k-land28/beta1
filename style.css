@@ -1,94 +1,115 @@
 body {
-  background-color: #121212;
-  color: #f0f0f0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #111;
+  color: #eee;
+  font-family: sans-serif;
   text-align: center;
-  padding: 20px;
-}
-
-h1 {
-  font-size: 2em;
-  margin-bottom: 20px;
-  color: #00ffcc;
+  margin: 0;
+  padding: 0 1rem;
+  overflow-x: hidden;
 }
 
 #tabs {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 20px;
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
 }
 
 .tab-button {
-  background-color: #1f1f1f;
+  padding: 0.5rem;
+  font-size: 1rem;
   border: none;
-  color: #ffffff;
-  padding: 10px 15px;
-  font-size: 1em;
+  background-color: #333;
+  color: #fff;
   cursor: pointer;
-  border-radius: 8px;
-  transition: background-color 0.3s ease;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
 }
 
-.tab-button.active,
-.tab-button:hover {
-  background-color: #00ffcc;
-  color: #000;
+.tab-button.active {
+  background-color: #00bcd4;
 }
 
-.table {
+#table {
+  position: relative;
   width: 100%;
   max-width: 400px;
-  height: 200px;
-  margin: 0 auto 20px;
-  background: radial-gradient(ellipse at center, #2e2e2e 0%, #121212 100%);
-  border-radius: 50%/30%;
-  position: relative;
+  height: 220px;
+  margin: 1rem auto;
+  background: radial-gradient(ellipse at center, #222 60%, #111 100%);
+  border: 3px solid #00bcd4;
+  border-radius: 50% / 30%;
+  box-sizing: border-box;
 }
 
-#situationText,
-#handText,
-#resultText {
-  font-size: 1.2em;
-  margin: 10px 0;
+.position {
+  position: absolute;
+  width: 50px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  border-radius: 15px;
+  background-color: #004444cc;
+  color: #0ff;
+  box-shadow: 0 0 10px #0ff;
+  font-weight: bold;
+  user-select: none;
 }
 
-#actionButtons {
-  margin-top: 15px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
+/* 自分のポジションの強調表示 */
+.position.active-position {
+  background-color: #00ffffdd;
+  box-shadow: 0 0 15px 5px #00ffffcc;
+  color: #000; /* 蛍光色背景なので文字は黒に */
+  font-weight: bolder;
 }
 
-#actionButtons button {
-  background-color: #1f1f1f;
-  border: 1px solid #00ffcc;
-  color: #00ffcc;
-  padding: 10px 20px;
-  font-size: 1em;
-  border-radius: 10px;
+#actionButtons button,
+#nextButton {
+  margin: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: none;
   cursor: pointer;
-  transition: all 0.3s ease;
+  min-width: 100px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.3s ease;
+  font-weight: bold;
+  letter-spacing: 0.5px;
 }
 
-#actionButtons button:hover {
-  background-color: #00ffcc;
-  color: #000;
+#actionButtons button:hover,
+#nextButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+}
+
+#actionButtons button.raise {
+  background-color: #00eaff;
+  color: #fff;
+  box-shadow: 0 0 8px #00eaffaa;
+}
+
+#actionButtons button.call {
+  background-color: #29ff8a;
+  color: #fff;
+  box-shadow: 0 0 8px #29ff8aaa;
+}
+
+#actionButtons button.fold {
+  background-color: #ff0055;
+  color: #fff;
+  box-shadow: 0 0 8px #ff0055aa;
 }
 
 #nextButton {
-  margin-top: 20px;
-  background-color: #444;
+  background-color: #6c63ff;
   color: #fff;
-  border: none;
-  padding: 10px 25px;
-  font-size: 1em;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  box-shadow: 0 0 10px #6c63ffaa;
 }
 
-#nextButton:hover {
-  background-color: #00ffcc;
-  color: #000;
+#resultText {
+  font-size: 1.2rem;
+  margin-top: 1rem;
+  font-weight: bold;
 }
