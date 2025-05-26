@@ -1,104 +1,237 @@
-let mode = 'open_none';
+'use strict';
+
+const positions = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
+
+let openraiseRangeData = null;  // openraise.jsonのデータ
+let allOpenraiseHandsList = null; // openraise用の全ハンド展開
+
+let vsOpenRangeData = null; // vs_open.jsonのデータ
+let vsOpenQuestionPool = []; // vs_open用の全問題プール
+
+// openraise.jsonの読み込み
+async function loadOpenraiseRange() {
+  try {
+    const res = await fetch('openraise.json');
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    openraiseRangeData = await res.json();
+    allOpenraiseHandsList = buildAllHandsList(openraiseRangeData);
+  } catch (e) {
+    console.error('openraise.jsonの読み込みに失敗しました:', e);
+  }
+}
+
+// openraise用全展開リストの生成
+function buildAllHandsList(rangeData) {
+  const list = [];
+  for (const pos in rangeData) {
+    if (pos === 'BB') continue; // openraiseではBB除外
+    const hands = rangeData[pos].hands;
+    for (const hand in hands) {
+      list.push({
+        position: pos,
+        hand: hand,
+        correct: hands[hand]
+      });
+    }
+  }
+  return list;
+}
+
+// openraiseモードの問題生成
+function generateOpenraiseQuestion() {
+  if (!allOpenraiseHandsList || allOpenraiseHandsList.length === 0) {
+    return {
+      situation: 'openraise.jsonのデータが読み込まれていません、または問題がありません。',
+      correct: null,
+      choices: [],
+      position: null,
+      hand: null,
+      stage: 'openraise'
+    };
+  }
+  const item = allOpenraiseHandsList[Math.floor(Math.random() * allOpenraiseHandsList.length)];
+  return {
+    situation: `${item.position}からOpen Raiseしますか？ハンド：${item.hand}`,
+    correct: item.correct,
+    choices: ['Raise', 'Fold'],
+    position: item.position,
+    hand: item.hand,
+    stage: 'openraise'
+  };
+}
+
+// vs_open.jsonの読み込みと問題プール生成
+async function loadVsOpenRange() {
+  try {
+    const res = await fetch('vs_open.json');
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    vsOpenRangeData = await res.json();
+    buildVsOpenQuestionPool();
+  } catch (e) {
+    console.error('vs_open.jsonの読み込みに失敗:', e);
+  }
+}
+
+function buildVsOpenQuestionPool() {
+  vsOpenQuestionPool = [];
+  for (const opener in vsOpenRangeData) {
+    for (const hero in vsOpenRangeData[opener]) {
+      const hands = vsOpenRangeData[opener][hero].hands;
+      for (const hand in hands) {
+        vsOpenQuestionPool.push({
+          opener,
+          hero,
+          hand,
+          answer: hands[hand]
+        });
+      }
+    }
+  }
+}
+
+// vs_openモードの問題生成
+function generateVsOpenQuestion() {
+  const q = vsOpenQuestionPool[Math.floor(Math.random() * vsOpenQuestionPool.length)];
+  return {
+    situation: `${q.opener}がオープン。あなた（${q.hero}）のハンド：${q.hand}。どうする？`,
+    correct: q.answer,
+    choices: [
+      'Call',
+      'Fold',
+      '3Bet / Fold 4Bet',
+      '3Bet / Call 4Bet',
+      '3Bet / Raise 4Bet'
+    ],
+    position: q.hero,
+    hand: q.hand,
+    stage: 'vs_open'
+  };
+}
+
+// モードに応じた問題生成
+function generateRandomQuestion(mode) {
+  if (mode === 'vs_open') {
+    return generateVsOpenQuestion();
+  }
+  return {
+    situation: `モード「${mode}」の問題をまだ実装していません。`,
+    correct: null,
+    choices: [],
+    position: null,
+    hand: null,
+    stage: mode
+  };
+}
+
+let currentMode = 'openraise';
 let currentQuestion = null;
-let awaiting4BetResponse = false;
-let correct4BetAction = '';
-let resultText = document.getElementById('resultText');
 
-document.querySelectorAll('.tab-button').forEach(button => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-    button.classList.add('active');
-    mode = button.getAttribute('data-mode');
-    resetUI();
-    loadNextQuestion();
-  });
-});
+const situationText = document.getElementById('situationText');
+const handText = document.getElementById('handText');
+const actionButtons = document.getElementById('actionButtons');
+const resultText = document.getElementById('resultText');
+const nextButton = document.getElementById('nextButton');
+const tabs = document.querySelectorAll('.tab-button');
+const table = document.getElementById('table');
 
-document.getElementById('nextButton').addEventListener('click', () => {
-  resetUI();
-  loadNextQuestion();
-});
-
-function resetUI() {
-  document.getElementById('situationText').textContent = '';
-  document.getElementById('handText').textContent = '';
-  document.getElementById('actionButtons').innerHTML = '';
-  resultText.textContent = '';
-  awaiting4BetResponse = false;
-  correct4BetAction = '';
-}
-
-async function loadNextQuestion() {
-  const response = await fetch(`${mode}.json`);
-  const ranges = await response.json();
-  const positions = ["EP", "MP", "CO", "BTN", "SB", "BB"];
-  const opener = positions[Math.floor(Math.random() * positions.length)];
-  let responderOptions = positions.filter(pos => pos !== opener);
-  let responder = responderOptions[Math.floor(Math.random() * responderOptions.length)];
-  const betSizes = ["2bb", "3bb"];
-  const betSize = betSizes[Math.floor(Math.random() * betSizes.length)];
-
-  if (!ranges[opener] || !ranges[opener][responder] || !ranges[opener][responder][betSize]) {
-    loadNextQuestion(); // 無効な組み合わせはスキップ
-    return;
-  }
-
-  const hands = Object.keys(ranges[opener][responder][betSize]);
-  const hand = hands[Math.floor(Math.random() * hands.length)];
-  const answer = ranges[opener][responder][betSize][hand];
-
-  currentQuestion = { opener, responder, betSize, hand, answer };
-
-  document.getElementById('situationText').textContent = `${opener} opened ${betSize}, ${responder} のアクションは？`;
-  document.getElementById('handText').textContent = `Your hand: ${hand}`;
-  showAnswerButtons();
-}
-
-function showAnswerButtons() {
-  const actions = ["Call", "Fold", "3Bet"];
-  const container = document.getElementById('actionButtons');
-  container.innerHTML = '';
-  actions.forEach(action => {
-    const btn = document.createElement('button');
-    btn.textContent = action;
-    btn.onclick = () => handleAnswer(action);
-    container.appendChild(btn);
+function renderPositions(selectedPosition) {
+  table.innerHTML = '';
+  const W = table.clientWidth;
+  const H = table.clientHeight;
+  const cx = W / 2;
+  const cy = H / 2;
+  const rx = W / 2 * 0.78;
+  const ry = H / 2 * 0.78;
+  const selfIndex = positions.indexOf(selectedPosition);
+  if (selfIndex < 0) console.warn('renderPositions: selectedPositionが不正です。', selectedPosition);
+  positions.forEach((pos, i) => {
+    const relativeIndex = (i - selfIndex + positions.length) % positions.length;
+    const deg = relativeIndex * (360 / positions.length) + 90;
+    const rad = deg * Math.PI / 180;
+    const x = cx + rx * Math.cos(rad);
+    const y = cy + ry * Math.sin(rad);
+    const div = document.createElement('div');
+    div.className = 'position';
+    div.textContent = pos;
+    div.style.left = `${x - 25}px`;
+    div.style.top = `${y - 15}px`;
+    if (pos === selectedPosition) div.classList.add('active-position');
+    table.appendChild(div);
   });
 }
 
-function handleAnswer(answer) {
-  if (awaiting4BetResponse) {
-    if (answer === correct4BetAction) {
-      resultText.textContent = "正解！（4Betに対しての対応）";
-    } else {
-      resultText.textContent = `不正解！正解は ${correct4BetAction} でした`;
+async function displayQuestion() {
+  if (currentMode === 'openraise') {
+    if (!openraiseRangeData) {
+      await loadOpenraiseRange();
+      if (!openraiseRangeData) {
+        situationText.textContent = '問題データの読み込みに失敗しました。';
+        return;
+      }
     }
-    awaiting4BetResponse = false;
-    correct4BetAction = '';
-    return;
-  }
-
-  if (answer === currentQuestion.answer.action) {
-    resultText.textContent = "正解！";
-
-    if (answer === "3Bet" && currentQuestion.answer.nextAction) {
-      awaiting4BetResponse = true;
-      correct4BetAction = currentQuestion.answer.nextAction;
-      show4BetResponseButtons();
+    currentQuestion = generateOpenraiseQuestion();
+  } else if (currentMode === 'vs_open') {
+    if (!vsOpenRangeData) {
+      await loadVsOpenRange();
+      if (!vsOpenRangeData) {
+        situationText.textContent = 'vs_open.jsonの読み込みに失敗しました。';
+        return;
+      }
     }
+    currentQuestion = generateVsOpenQuestion();
   } else {
-    resultText.textContent = `不正解！正解は ${currentQuestion.answer.action} でした`;
+    currentQuestion = generateRandomQuestion(currentMode);
   }
-}
 
-function show4BetResponseButtons() {
-  const responses = ["5Bet", "Call 4Bet", "Fold 4Bet"];
-  const container = document.getElementById('actionButtons');
-  container.innerHTML = '<p>相手から4Betが返ってきたら？</p>';
-  responses.forEach(response => {
+  const q = currentQuestion;
+  situationText.textContent = q.situation;
+  handText.textContent = '';
+  resultText.textContent = '';
+  actionButtons.innerHTML = '';
+
+  if (q.position) {
+    renderPositions(q.position);
+  } else {
+    renderPositions(null);
+  }
+
+  q.choices.forEach(choice => {
     const btn = document.createElement('button');
-    btn.textContent = response;
-    btn.onclick = () => handleAnswer(response);
-    container.appendChild(btn);
+    btn.textContent = choice;
+    if (/fold/i.test(choice)) {
+      btn.classList.add('fold');
+    } else if (/call/i.test(choice)) {
+      btn.classList.add('call');
+    } else {
+      btn.classList.add('raise');
+    }
+    btn.addEventListener('click', () => {
+      if (choice === q.correct) {
+        resultText.style.color = '#0faa00';
+        resultText.textContent = '正解！🎉';
+      } else {
+        resultText.style.color = '#ff2200';
+        resultText.textContent = `不正解。正解は「${q.correct}」です。`;
+      }
+    });
+    actionButtons.appendChild(btn);
   });
 }
+
+function switchMode(newMode) {
+  currentMode = newMode;
+  tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === newMode));
+  displayQuestion();
+}
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.dataset.mode !== currentMode) {
+      switchMode(tab.dataset.mode);
+    }
+  });
+});
+
+nextButton.addEventListener('click', displayQuestion);
+
+window.addEventListener('load', () => switchMode(currentMode));
