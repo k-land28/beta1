@@ -1,6 +1,6 @@
 'use strict';
 
-const positions = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
+const positions = ['EP', 'MP', 'CO', 'BTN', 'SB', 'BB'];
 
 let openraiseRangeData = null;  // openraise.jsonのデータ
 let allOpenraiseHandsList = null; // openraise用の全ハンド展開
