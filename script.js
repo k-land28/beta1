@@ -13,13 +13,13 @@ async function loadOpenraiseRange() {
     const res = await fetch('openraise.json');
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     openraiseRangeData = await res.json();
-    allOpenraiseHandsList = buildAllHandsList(openraiseRangeData);
+    allOpenraiseHandsList = buildOpenraiseHandsList(openraiseRangeData);
   } catch (e) {
     console.error('openraise.jsonの読み込みに失敗しました:', e);
   }
 }
 
-function buildAllHandsList(rangeData) {
+function buildOpenraiseHandsList(rangeData) {
   const list = [];
   for (const pos in rangeData) {
     if (pos === 'BB') continue;
@@ -30,6 +30,35 @@ function buildAllHandsList(rangeData) {
         hand: hand,
         correct: hands[hand]
       });
+    }
+  }
+  return list;
+}
+
+async function loadVsOpenRange() {
+  try {
+    const res = await fetch('vs_open.json');
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    vsOpenRangeData = await res.json();
+    allVsOpenHandsList = buildVsOpenHandsList(vsOpenRangeData);
+  } catch (e) {
+    console.error('vs_open.jsonの読み込みに失敗しました:', e);
+  }
+}
+
+function buildVsOpenHandsList(rangeData) {
+  const list = [];
+  for (const opener in rangeData) {
+    for (const hero in rangeData[opener]) {
+      const hands = rangeData[opener][hero].hands;
+      for (const hand in hands) {
+        list.push({
+          opener: opener,
+          position: hero,
+          hand: hand,
+          correct: hands[hand]
+        });
+      }
     }
   }
   return list;
@@ -59,37 +88,6 @@ function generateOpenraiseQuestion() {
   };
 }
 
-// ▼▼▼ vsopenモード専用 ▼▼▼
-
-async function loadVsOpenRange() {
-  try {
-    const res = await fetch('vs_open.json');
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    vsOpenRangeData = await res.json();
-    allVsOpenHandsList = buildVsOpenHandsList(vsOpenRangeData);
-  } catch (e) {
-    console.error('vs_open.jsonの読み込みに失敗しました:', e);
-  }
-}
-
-function buildVsOpenHandsList(data) {
-  const list = [];
-  for (const opener in data) {
-    for (const hero in data[opener]) {
-      const hands = data[opener][hero].hands;
-      for (const hand in hands) {
-        list.push({
-          openerPosition: opener,
-          heroPosition: hero,
-          hand: hand,
-          correct: hands[hand]
-        });
-      }
-    }
-  }
-  return list;
-}
-
 function generateVsOpenQuestion() {
   if (!allVsOpenHandsList || allVsOpenHandsList.length === 0) {
     return {
@@ -98,23 +96,27 @@ function generateVsOpenQuestion() {
       choices: [],
       position: null,
       hand: null,
-      stage: 'vsopen'
+      stage: 'vs_open'
     };
   }
 
   const item = allVsOpenHandsList[Math.floor(Math.random() * allVsOpenHandsList.length)];
 
   return {
-    situation: `${item.openerPosition}のオープンに対して、${item.heroPosition}での対応。ハンド：${item.hand}`,
+    situation: `${item.opener}がオープンした状況で、${item.position}のあなたのハンド：${item.hand}`,
     correct: item.correct,
-    choices: ['Call', 'Fold', '3Bet / Fold 4Bet', '3Bet / Call 4Bet', '3Bet / Raise 4Bet'],
-    position: item.heroPosition,
+    choices: [
+      'Call',
+      'Fold',
+      '3Bet / Fold 4Bet',
+      '3Bet / Call 4Bet',
+      '3Bet / Raise 4Bet'
+    ],
+    position: item.position,
     hand: item.hand,
-    stage: 'vsopen'
+    stage: 'vs_open'
   };
 }
-
-// ▲▲▲ vsopenモード専用ここまで ▲▲▲
 
 function generateRandomQuestion(mode) {
   return {
@@ -182,19 +184,11 @@ async function displayQuestion() {
   if (currentMode === 'openraise') {
     if (!openraiseRangeData) {
       await loadOpenraiseRange();
-      if (!openraiseRangeData) {
-        situationText.textContent = '問題データの読み込みに失敗しました。';
-        return;
-      }
     }
     currentQuestion = generateOpenraiseQuestion();
-  } else if (currentMode === 'vsopen') {
+  } else if (currentMode === 'vs_open') {
     if (!vsOpenRangeData) {
       await loadVsOpenRange();
-      if (!vsOpenRangeData) {
-        situationText.textContent = 'vs_open.jsonのデータの読み込みに失敗しました。';
-        return;
-      }
     }
     currentQuestion = generateVsOpenQuestion();
   } else {
@@ -207,11 +201,7 @@ async function displayQuestion() {
   resultText.textContent = '';
   actionButtons.innerHTML = '';
 
-  if (q.position) {
-    renderPositions(q.position);
-  } else {
-    renderPositions(null);
-  }
+  renderPositions(q.position);
 
   q.choices.forEach(choice => {
     const btn = document.createElement('button');
