@@ -2,13 +2,12 @@
 
 const positions = ['EP', 'MP', 'CO', 'BTN', 'SB', 'BB'];
 
-let openraiseRangeData = null;  // openraise.jsonのデータ
-let allOpenraiseHandsList = null; // openraise用の全ハンド展開
+let openraiseRangeData = null;
+let allOpenraiseHandsList = null;
 
-let vsOpenRangeData = null; // vs_open.jsonのデータ
-let vsOpenQuestionPool = []; // vs_open用の全問題プール
+let vsOpenRangeData = null;
+let allVsOpenHandsList = null;
 
-// openraise.jsonの読み込み
 async function loadOpenraiseRange() {
   try {
     const res = await fetch('openraise.json');
@@ -20,11 +19,10 @@ async function loadOpenraiseRange() {
   }
 }
 
-// openraise用全展開リストの生成
 function buildAllHandsList(rangeData) {
   const list = [];
   for (const pos in rangeData) {
-    if (pos === 'BB') continue; // openraiseではBB除外
+    if (pos === 'BB') continue;
     const hands = rangeData[pos].hands;
     for (const hand in hands) {
       list.push({
@@ -37,7 +35,6 @@ function buildAllHandsList(rangeData) {
   return list;
 }
 
-// openraiseモードの問題生成
 function generateOpenraiseQuestion() {
   if (!allOpenraiseHandsList || allOpenraiseHandsList.length === 0) {
     return {
@@ -49,7 +46,9 @@ function generateOpenraiseQuestion() {
       stage: 'openraise'
     };
   }
+
   const item = allOpenraiseHandsList[Math.floor(Math.random() * allOpenraiseHandsList.length)];
+
   return {
     situation: `${item.position}からOpen Raiseしますか？ハンド：${item.hand}`,
     correct: item.correct,
@@ -60,59 +59,64 @@ function generateOpenraiseQuestion() {
   };
 }
 
-// vs_open.jsonの読み込みと問題プール生成
+// ▼▼▼ vsopenモード専用 ▼▼▼
+
 async function loadVsOpenRange() {
   try {
     const res = await fetch('vs_open.json');
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     vsOpenRangeData = await res.json();
-    buildVsOpenQuestionPool();
+    allVsOpenHandsList = buildVsOpenHandsList(vsOpenRangeData);
   } catch (e) {
-    console.error('vs_open.jsonの読み込みに失敗:', e);
+    console.error('vs_open.jsonの読み込みに失敗しました:', e);
   }
 }
 
-function buildVsOpenQuestionPool() {
-  vsOpenQuestionPool = [];
-  for (const opener in vsOpenRangeData) {
-    for (const hero in vsOpenRangeData[opener]) {
-      const hands = vsOpenRangeData[opener][hero].hands;
+function buildVsOpenHandsList(data) {
+  const list = [];
+  for (const opener in data) {
+    for (const hero in data[opener]) {
+      const hands = data[opener][hero].hands;
       for (const hand in hands) {
-        vsOpenQuestionPool.push({
-          opener,
-          hero,
-          hand,
-          answer: hands[hand]
+        list.push({
+          openerPosition: opener,
+          heroPosition: hero,
+          hand: hand,
+          correct: hands[hand]
         });
       }
     }
   }
+  return list;
 }
 
-// vs_openモードの問題生成
 function generateVsOpenQuestion() {
-  const q = vsOpenQuestionPool[Math.floor(Math.random() * vsOpenQuestionPool.length)];
+  if (!allVsOpenHandsList || allVsOpenHandsList.length === 0) {
+    return {
+      situation: 'vs_open.jsonのデータが読み込まれていません、または問題がありません。',
+      correct: null,
+      choices: [],
+      position: null,
+      hand: null,
+      stage: 'vsopen'
+    };
+  }
+
+  const item = allVsOpenHandsList[Math.floor(Math.random() * allVsOpenHandsList.length)];
+
   return {
-    situation: `${q.opener}がオープン。あなた（${q.hero}）のハンド：${q.hand}。どうする？`,
-    correct: q.answer,
-    choices: [
-      'Call',
-      'Fold',
-      '3Bet / Fold 4Bet',
-      '3Bet / Call 4Bet',
-      '3Bet / Raise 4Bet'
-    ],
-    position: q.hero,
-    hand: q.hand,
-    stage: 'vs_open'
+    situation: `${item.openerPosition}のオープンに対して、${item.heroPosition}での対応。ハンド：${item.hand}`,
+    correct: item.correct,
+    choices: ['Call', 'Fold', '3Bet / Fold 4Bet', '3Bet / Call 4Bet', '3Bet / Raise 4Bet'],
+    position: item.heroPosition,
+    hand: item.hand,
+    stage: 'vsopen'
   };
 }
 
-// モードに応じた問題生成
+// ▲▲▲ vsopenモード専用ここまで ▲▲▲
+
 function generateRandomQuestion(mode) {
-  if (mode === 'vs_open') {
-    return generateVsOpenQuestion();
-  }
   return {
     situation: `モード「${mode}」の問題をまだ実装していません。`,
     correct: null,
@@ -136,26 +140,40 @@ const table = document.getElementById('table');
 
 function renderPositions(selectedPosition) {
   table.innerHTML = '';
+
   const W = table.clientWidth;
   const H = table.clientHeight;
+
   const cx = W / 2;
   const cy = H / 2;
+
   const rx = W / 2 * 0.78;
   const ry = H / 2 * 0.78;
+
   const selfIndex = positions.indexOf(selectedPosition);
-  if (selfIndex < 0) console.warn('renderPositions: selectedPositionが不正です。', selectedPosition);
+  if (selfIndex < 0) {
+    console.warn('renderPositions: selectedPositionが不正です。', selectedPosition);
+  }
+
   positions.forEach((pos, i) => {
     const relativeIndex = (i - selfIndex + positions.length) % positions.length;
     const deg = relativeIndex * (360 / positions.length) + 90;
     const rad = deg * Math.PI / 180;
+
     const x = cx + rx * Math.cos(rad);
     const y = cy + ry * Math.sin(rad);
+
     const div = document.createElement('div');
     div.className = 'position';
     div.textContent = pos;
+
     div.style.left = `${x - 25}px`;
     div.style.top = `${y - 15}px`;
-    if (pos === selectedPosition) div.classList.add('active-position');
+
+    if (pos === selectedPosition) {
+      div.classList.add('active-position');
+    }
+
     table.appendChild(div);
   });
 }
@@ -170,11 +188,11 @@ async function displayQuestion() {
       }
     }
     currentQuestion = generateOpenraiseQuestion();
-  } else if (currentMode === 'vs_open') {
+  } else if (currentMode === 'vsopen') {
     if (!vsOpenRangeData) {
       await loadVsOpenRange();
       if (!vsOpenRangeData) {
-        situationText.textContent = 'vs_open.jsonの読み込みに失敗しました。';
+        situationText.textContent = 'vs_open.jsonのデータの読み込みに失敗しました。';
         return;
       }
     }
