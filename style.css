@@ -65,7 +65,7 @@ body {
 }
 
 /* 相手のポジション用のスタイル */
-.enemy-position {
+.position.enemy-position {
   background-color: #ff6666;
   color: white;
   font-weight: bold;
