@@ -1,3 +1,4 @@
+
 'use strict';
 
 const positions = ['EP', 'MP', 'CO', 'BTN', 'SB', 'BB'];
@@ -8,6 +9,13 @@ let allOpenraiseHandsList = null;
 let vsOpenRangeData = null;
 let allVsOpenHandsList = null;
 
+let vs3BetRangeData = null;
+let allVs3BetHandsList = null;
+
+let bbdefenseRangeData = null;
+let allBbdefenseHandsList = null;
+
+// openraise
 async function loadOpenraiseRange() {
   try {
     const res = await fetch('openraise.json');
@@ -35,6 +43,7 @@ function buildOpenraiseHandsList(rangeData) {
   return list;
 }
 
+// vs_open
 async function loadVsOpenRange() {
   try {
     const res = await fetch('vs_open.json');
@@ -55,6 +64,66 @@ function buildVsOpenHandsList(rangeData) {
         list.push({
           opener: opener,
           position: hero,
+          hand: hand,
+          correct: hands[hand]
+        });
+      }
+    }
+  }
+  return list;
+}
+
+// vs_3bet
+async function loadVs3BetRange() {
+  try {
+    const res = await fetch('vs_3bet.json');
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    vs3BetRangeData = await res.json();
+    allVs3BetHandsList = buildVs3BetHandsList(vs3BetRangeData);
+  } catch (e) {
+    console.error('vs_3bet.jsonの読み込みに失敗しました:', e);
+  }
+}
+
+function buildVs3BetHandsList(rangeData) {
+  const list = [];
+  for (const opener in rangeData) {
+    for (const threeBetter in rangeData[opener]) {
+      const hands = rangeData[opener][threeBetter].hands;
+      for (const hand in hands) {
+        list.push({
+          opener: opener,
+          threeBetter: threeBetter,
+          hand: hand,
+          correct: hands[hand]
+        });
+      }
+    }
+  }
+  return list;
+}
+
+// BBdefense
+async function loadBbdefenseRange() {
+  try {
+    const res = await fetch('bbdefense.json');
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    bbdefenseRangeData = await res.json();
+    allBbdefenseHandsList = buildBbdefenseHandsList(bbdefenseRangeData);
+  } catch (e) {
+    console.error('bbdefense.jsonの読み込みに失敗しました:', e);
+  }
+}
+
+function buildBbdefenseHandsList(rangeData) {
+  const list = [];
+  for (const opener in rangeData) {
+    for (const size in rangeData[opener]) {
+      const hands = rangeData[opener][size].hands;
+      for (const hand in hands) {
+        list.push({
+          opener: opener,
+          size: size,
           hand: hand,
           correct: hands[hand]
         });
@@ -118,6 +187,66 @@ function generateVsOpenQuestion() {
   };
 }
 
+function generateVs3BetQuestion() {
+  if (!allVs3BetHandsList || allVs3BetHandsList.length === 0) {
+    return {
+      situation: 'vs_3bet.jsonのデータが読み込まれていません、または問題がありません。',
+      correct: null,
+      choices: [],
+      position: null,
+      hand: null,
+      stage: 'vs_3bet'
+    };
+  }
+
+  const item = allVs3BetHandsList[Math.floor(Math.random() * allVs3BetHandsList.length)];
+
+  return {
+    situation: `${item.opener}からオープンし、${item.threeBetter}が3Betしてきた状況で、あなたのハンド：${item.hand}`,
+    correct: item.correct,
+    choices: [
+      'Call',
+      'Fold',
+      '3Bet / Fold 4Bet',
+      '3Bet / Call 4Bet',
+      '3Bet / Raise 4Bet'
+    ],
+    position: item.opener,
+    hand: item.hand,
+    stage: 'vs_3bet'
+  };
+}
+
+function generateBbdefenseQuestion() {
+  if (!allBbdefenseHandsList || allBbdefenseHandsList.length === 0) {
+    return {
+      situation: 'bbdefense.jsonのデータが読み込まれていません、または問題がありません。',
+      correct: null,
+      choices: [],
+      position: null,
+      hand: null,
+      stage: 'bbdefense'
+    };
+  }
+
+  const item = allBbdefenseHandsList[Math.floor(Math.random() * allBbdefenseHandsList.length)];
+
+  return {
+    situation: `${item.opener}が${item.size}でオープン。あなたはBB。ハンド：${item.hand}。アクションは？`,
+    correct: item.correct,
+    choices: [
+      'Call',
+      'Fold',
+      '3Bet / Fold 4Bet',
+      '3Bet / Call 4Bet',
+      '3Bet / Raise 4Bet'
+    ],
+    position: 'BB',
+    hand: item.hand,
+    stage: 'bbdefense'
+  };
+}
+
 function generateRandomQuestion(mode) {
   return {
     situation: `モード「${mode}」の問題をまだ実装していません。`,
@@ -140,7 +269,7 @@ const nextButton = document.getElementById('nextButton');
 const tabs = document.querySelectorAll('.tab-button');
 const table = document.getElementById('table');
 
-function renderPositions(selectedPosition) {
+function renderPositions(selectedPosition, enemyPosition = null) {
   table.innerHTML = '';
 
   const W = table.clientWidth;
@@ -149,8 +278,8 @@ function renderPositions(selectedPosition) {
   const cx = W / 2;
   const cy = H / 2;
 
-  const rx = W / 2 * 0.78;
-  const ry = H / 2 * 0.78;
+  const rx = W / 2 * 0.75;
+  const ry = H / 2 * 0.75;
 
   const selfIndex = positions.indexOf(selectedPosition);
   if (selfIndex < 0) {
@@ -175,6 +304,10 @@ function renderPositions(selectedPosition) {
     if (pos === selectedPosition) {
       div.classList.add('active-position');
     }
+       
+    if (pos === enemyPosition) {
+      div.classList.add('enemy-position');
+    }
 
     table.appendChild(div);
   });
@@ -191,6 +324,16 @@ async function displayQuestion() {
       await loadVsOpenRange();
     }
     currentQuestion = generateVsOpenQuestion();
+  } else if (currentMode === 'vs_3bet') {
+    if (!vs3BetRangeData) {
+      await loadVs3BetRange();
+    }
+    currentQuestion = generateVs3BetQuestion();
+  } else if (currentMode === 'bbdefense') {
+    if (!bbdefenseRangeData) {
+      await loadBbdefenseRange();
+    }
+    currentQuestion = generateBbdefenseQuestion();
   } else {
     currentQuestion = generateRandomQuestion(currentMode);
   }
@@ -201,7 +344,7 @@ async function displayQuestion() {
   resultText.textContent = '';
   actionButtons.innerHTML = '';
 
-  renderPositions(q.position);
+ renderPositions(q.position, q.opener || q.threeBetter || null);
 
   q.choices.forEach(choice => {
     const btn = document.createElement('button');
