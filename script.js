@@ -1,4 +1,3 @@
-
 'use strict';
 
 const positions = ['EP', 'MP', 'CO', 'BTN', 'SB', 'BB'];
@@ -148,7 +147,7 @@ function generateOpenraiseQuestion() {
   const item = allOpenraiseHandsList[Math.floor(Math.random() * allOpenraiseHandsList.length)];
 
   return {
-    situation: `${item.position}からOpen Raiseしますか？ハンド：${item.hand}`,
+    situation: `${item.position}からOpen Raiseしますか？`,
     correct: item.correct,
     choices: ['Raise', 'Fold'],
     position: item.position,
@@ -172,7 +171,7 @@ function generateVsOpenQuestion() {
   const item = allVsOpenHandsList[Math.floor(Math.random() * allVsOpenHandsList.length)];
 
   return {
-    situation: `${item.opener}がオープンした状況で、${item.position}のあなたのハンド：${item.hand}`,
+    situation: `${item.opener}がOpenRaiseしました。${item.position}のアクションは？`,
     correct: item.correct,
     choices: [
       'Call',
@@ -182,6 +181,7 @@ function generateVsOpenQuestion() {
       '3Bet / Raise 4Bet'
     ],
     position: item.position,
+    opener:item.opener,
     hand: item.hand,
     stage: 'vs_open'
   };
@@ -202,7 +202,7 @@ function generateVs3BetQuestion() {
   const item = allVs3BetHandsList[Math.floor(Math.random() * allVs3BetHandsList.length)];
 
   return {
-    situation: `${item.opener}からオープンし、${item.threeBetter}が3Betしてきた状況で、あなたのハンド：${item.hand}`,
+    situation: `${item.opener}からOpenRaiseすると、${item.threeBetter}が3Betしました。アクションは？`,
     correct: item.correct,
     choices: [
       'Call',
@@ -212,6 +212,7 @@ function generateVs3BetQuestion() {
       '3Bet / Raise 4Bet'
     ],
     position: item.opener,
+    threeBetter:item.threeBetter,
     hand: item.hand,
     stage: 'vs_3bet'
   };
@@ -232,7 +233,7 @@ function generateBbdefenseQuestion() {
   const item = allBbdefenseHandsList[Math.floor(Math.random() * allBbdefenseHandsList.length)];
 
   return {
-    situation: `${item.opener}が${item.size}でオープン。あなたはBB。ハンド：${item.hand}。アクションは？`,
+    situation: `${item.opener}が${item.size}のOpenRaiseをしました。BBのアクションは？`,
     correct: item.correct,
     choices: [
       'Call',
@@ -242,19 +243,9 @@ function generateBbdefenseQuestion() {
       '3Bet / Raise 4Bet'
     ],
     position: 'BB',
+    opener:item.opener,
     hand: item.hand,
     stage: 'bbdefense'
-  };
-}
-
-function generateRandomQuestion(mode) {
-  return {
-    situation: `モード「${mode}」の問題をまだ実装していません。`,
-    correct: null,
-    choices: [],
-    position: null,
-    hand: null,
-    stage: mode
   };
 }
 
@@ -340,10 +331,19 @@ async function displayQuestion() {
 
   const q = currentQuestion;
   situationText.textContent = q.situation;
-  handText.textContent = '';
+  handText.textContent = `あなたのハンド: ${q.hand}`;
+  handText.style.fontSize = '24px';
+  handText.style.fontWeight = 'bold';
   resultText.textContent = '';
   actionButtons.innerHTML = '';
 
+  const contentElements = [situationText, handText, actionButtons];
+  contentElements.forEach(el => {
+  el.classList.remove('fade-slide-in'); // 前のを一旦消す
+  void el.offsetWidth; // 再描画トリガー
+  el.classList.add('fade-slide-in');
+});
+  
  renderPositions(q.position, q.opener || q.threeBetter || null);
 
   q.choices.forEach(choice => {
@@ -357,6 +357,7 @@ async function displayQuestion() {
       btn.classList.add('raise');
     }
     btn.addEventListener('click', () => {
+      if (actionButtons.querySelector('.disabled')) return;
       if (choice === q.correct) {
         resultText.style.color = '#0faa00';
         resultText.textContent = '正解！🎉';
@@ -364,6 +365,7 @@ async function displayQuestion() {
         resultText.style.color = '#ff2200';
         resultText.textContent = `不正解。正解は「${q.correct}」です。`;
       }
+      actionButtons.querySelectorAll('button').forEach(b => b.classList.add('disabled'));
     });
     actionButtons.appendChild(btn);
   });
@@ -385,4 +387,10 @@ tabs.forEach(tab => {
 
 nextButton.addEventListener('click', displayQuestion);
 
-window.addEventListener('load', () => switchMode(currentMode));
+window.addEventListener('load', () => {
+  const splash = document.getElementById('splashScreen');
+  setTimeout(() => {
+    splash.classList.add('hidden');
+    switchMode(currentMode); // ←通常の表示処理を始める
+  }, 1200); // 1.2秒くらい表示
+});
