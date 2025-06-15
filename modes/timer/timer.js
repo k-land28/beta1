@@ -43,6 +43,23 @@ export function showTimerMode() {
   const seBreak = new Audio('../../data/sounds/break.mp3');
   let hasPlayedWarn30 = false; // 30秒前サウンド重複防止
 
+  // ▼ 初回クリック時にSEをプリロード（再生許可を得る）
+  let hasInitializedSE = false;
+  function preloadSE() {
+    if (hasInitializedSE) return;
+    hasInitializedSE = true;
+
+    [seWarn30, seLevelUp, seBreak].forEach(se => {
+      se.play().then(() => {
+        se.pause();
+        se.currentTime = 0;
+      }).catch(() => {
+        // ユーザー操作後でないとエラーになるが無視でOK
+      });
+    });
+  }
+  document.addEventListener('click', preloadSE, { once: true });
+
   function updateTimeFromElapsed() {
     if (!state.lastUpdateTimestamp || state.isPaused) return;
     const elapsed = Math.floor((Date.now() - state.lastUpdateTimestamp) / 1000);
